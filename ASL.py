@@ -12,7 +12,12 @@ import mediapipe as mp
 from utils.cvfpscalc import CvFpsCalc
 from model.keypoint_classifier.keypoint_classifier import KeyPointClassifier
 
-
+# Variables to track detected gestures and time
+current_word = ""  # Tracks the word being formed
+sentence = ""  # Tracks the complete sentence
+last_detected_time = 0  # Last time a gesture was detected
+word_timeout = 10  # Timeout in seconds to finalize a word
+sentence_timeout = 20  # Timeout in seconds to finalize a sentence
 
 datasetdir = "model/dataset/dataset 1"
 #//////////////////////////////////////////////
@@ -24,7 +29,7 @@ datasetdir = "model/dataset/dataset 1"
 //////def get
 
 def main():
-    # Argument parsing #################################################################
+    # Argument parsing #########################################
     args = get_args()
 
     cap_device = args.device
@@ -42,7 +47,7 @@ def main():
     cap.set(cv.CAP_PROP_FRAME_WIDTH, cap_width)
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, cap_height)
 
-    # Model load #############################################################
+    # Model load ##############################################
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(
         static_image_mode=use_static_image_mode,
@@ -53,7 +58,7 @@ def main():
 
     keypoint_classifier = KeyPointClassifier()
 
-    # Read labels ###########################################################
+    # Read labels ##################################################
     with open(
         "model/keypoint_classifier/keypoint_classifier_label.csv", encoding="utf-8-sig"
     ) as f:
@@ -80,100 +85,7 @@ def main():
     #  ########################################################################
     mode = 0
 
-    while True:
-        fps = cvFpsCalc.get()
-
-        # Process Key (ESC: end) #################################################
-        key = cv.waitKey(10)
-        if key == 27:  # ESC
-            break
-        number, mode = select_mode(key, mode)
-
-        # Camera capture #####################################################
-        ret, image = cap.read()
-        if not ret:
-            break
-        image = cv.flip(image, 1)  # Mirror display
-        debug_image = copy.deepcopy(image)
-
-        # Detection implementation #############################################################
-        image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
-        image.flags.writeable = False
-        results = hands.process(image)
-        image.flags.writeable = True
-
-        if results.multi_hand_landmarks is not None:
-            for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
-                # Bounding box calculation
-                brect = calc_bounding_rect(debug_image, hand_landmarks)
-                # Landmark calculation
-                landmark_list = calc_landmark_list(debug_image, hand_landmarks)
-
-                # Always draw the detected hand (even if no letter is added)
-                debug_image = draw_bounding_rect(use_brect, debug_image, brect)
-                debug_image = draw_landmarks(debug_image, landmark_list)
-
-                # Conversion to relative coordinates / normalized coordinates
-                pre_processed_landmark_list = pre_process_landmark(landmark_list)
-
-                # Hand sign classification
-                hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
-
-                # Get the detected letter
-                detected_letter = keypoint_classifier_labels[hand_sign_id] if hand_sign_id != -1 else "?"
-
-                # Display the letter associated with the detected gesture in real-time
-                cv.putText(debug_image, f"Detected: {detected_letter}", (10, 40), cv.FONT_HERSHEY_SIMPLEX, 0.8,
-                           (0, 255, 0), 2)
-
-                # Get the current time
-                current_time = time.time()
-
-                # Check if the hand gesture has been detected for long enough to process it
-                if hand_sign_id != -1:
-                    if detected_letter != detected_hand_sign:
-                        # If the detected gesture is different, reset the timer and capture the new gesture
-                        detected_hand_sign = detected_letter
-                        last_hand_sign_time = current_time
-
-                    # Only add the letter to the word after the gesture has been stable for 'gesture_duration'
-                    if current_time - last_hand_sign_time >= gesture_duration:
-                        # Add the detected letter to the word
-                        if detected_letter != current_word[-1:]:  # Avoid duplicate letters
-                            current_word += detected_letter
-                        # Reset the timer for the next gesture
-                        last_hand_sign_time = current_time
-
-                # If no gesture is detected for more than 'word_timeout', finalize the current word
-                if current_time - last_detected_time > word_timeout and current_word:
-                    sentence += current_word + " "
-                    current_word = ""
-
-                # If no gesture is detected for more than 'sentence_timeout', finalize the sentence
-                if current_time - last_detected_time > sentence_timeout and sentence:
-                    print(f"Final Sentence: {sentence.strip()}")
-                    speak_sentence(sentence.strip())  # Converts the sentence to speech
-                    sentence = ""  # Clear sentence after finalizing
-
-                # Keep updating the last detection time
-                last_detected_time = current_time
-
-        else:
-            # If no gesture is detected, still display the current word and sentence
-            if current_word:
-                sentence += current_word + " "
-            current_word = ""  # Reset the current word if no gesture is detected
-
-        # Always display the current word and sentence, even if no new gestures are detected
-        cv.putText(debug_image, f"Word: {current_word}", (10, 70), cv.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-        cv.putText(debug_image, f"Sentence: {sentence.strip()}", (10, 110), cv.FONT_HERSHEY_SIMPLEX, 0.8,
-                   (255, 255, 255), 2)
-
-        # Show the webcam output with the current word and sentence
-        cv.imshow("ASL Translator using OpenCV ", debug_image)
-
-    cap.release()
-    cv.destroyAllWindows()
+   
 
 
 def select_mode(key, mode):
