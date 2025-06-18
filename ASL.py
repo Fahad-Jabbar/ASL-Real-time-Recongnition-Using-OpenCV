@@ -85,7 +85,71 @@ def main():
     #  ########################################################################
     mode = 0
 
-   
+    while True:
+        fps = cvFpsCalc.get()
+
+        # Process Key (ESC: end) #################################################
+        key = cv.waitKey(10)
+        if key == 27:  # ESC
+            break
+        number, mode = select_mode(key, mode)
+
+        # Camera capture #####################################################
+        ret, image = cap.read()
+        if not ret:
+            break
+        image = cv.flip(image, 1)  # Mirror display
+        debug_image = copy.deepcopy(image)
+
+        # Detection implementation #############################################################
+        image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+        image.flags.writeable = False
+        results = hands.process(image)
+        image.flags.writeable = True
+
+        if results.multi_hand_landmarks is not None:
+            for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
+                # Bounding box calculation
+                brect = calc_bounding_rect(debug_image, hand_landmarks)
+                # Landmark calculation
+                landmark_list = calc_landmark_list(debug_image, hand_landmarks)
+
+                # Always draw the detected hand (even if no letter is added)
+                debug_image = draw_bounding_rect(use_brect, debug_image, brect)
+                debug_image = draw_landmarks(debug_image, landmark_list)
+
+                # Conversion to relative coordinates / normalized coordinates
+                pre_processed_landmark_list = pre_process_landmark(landmark_list)
+
+                # Hand sign classification
+                hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
+
+                # Get the detected letter
+                detected_letter = keypoint_classifier_labels[hand_sign_id] if hand_sign_id != -1 else "?"
+
+                # Display the letter associated with the detected gesture in real-time
+                cv.putText(debug_image, f"Detected: {detected_letter}", (10, 40), cv.FONT_HERSHEY_SIMPLEX, 0.8,
+                           (0, 255, 0), 2)
+
+                # Get the current time
+                current_time = time.time()
+
+                # Check if the hand gesture has been detected for long enough to process it
+                if hand_sign_id != -1:
+                    if detected_letter != detected_hand_sign:
+                        # If the detected gesture is different, reset the timer and capture the new gesture
+                        detected_hand_sign = detected_letter
+                        last_hand_sign_time = current_time
+
+                    # Only add the letter to the word after the gesture has been stable for 'gesture_duration'
+                    if current_time - last_hand_sign_time >= gesture_duration:
+                        # Add the detected letter to the word
+                        if detected_letter != current_word[-1:]:  # Avoid duplicate letters
+                            current_word += detected_letter
+                        # Reset the timer for the next gesture
+                        last_hand_sign_time = current_time
+
+               
 
 
 def select_mode(key, mode):
