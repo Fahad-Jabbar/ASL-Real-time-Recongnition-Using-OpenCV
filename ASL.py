@@ -21,15 +21,47 @@ sentence_timeout = 20  # Timeout in seconds to finalize a sentence
 
 datasetdir = "model/dataset/dataset 1"
 #//////////////////////////////////////////////
+# Initialize the TTS engine
+engine = pyttsx3.init()
 
+# Optional: Set the properties for the speech (rate, volume, voice)
+engine.setProperty('rate', 150)  # Speed of the speech
+engine.setProperty('volume', 1)  # Volume level (0.0 to 1.0)
+
+# Function to speak the sentence
+def speak_sentence(sentence):
+    engine.say(sentence)
+    engine.runAndWait()
 #//////////////////////////////////////////////
 
+def get_args():
+    parser = argparse.ArgumentParser()
 
+    parser.add_argument("--device", type=int, default=0)
+    parser.add_argument("--width", help="cap width", type=int, default=960)
+    parser.add_argument("--height", help="cap height", type=int, default=540)
 
-//////def get
+    parser.add_argument("--use_static_image_mode", action="store_true")
+    parser.add_argument(
+        "--min_detection_confidence",
+        help="min_detection_confidence",
+        type=float,
+        default=0.7,
+    )
+    parser.add_argument(
+        "--min_tracking_confidence",
+        help="min_tracking_confidence",
+        type=int,
+        default=0.5,
+    )
+
+    args = parser.parse_args()
+
+    return args
+
 
 def main():
-    # Argument parsing #########################################
+    # Argument parsing #################################################################
     args = get_args()
 
     cap_device = args.device
@@ -47,7 +79,7 @@ def main():
     cap.set(cv.CAP_PROP_FRAME_WIDTH, cap_width)
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, cap_height)
 
-    # Model load ##############################################
+    # Model load #############################################################
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(
         static_image_mode=use_static_image_mode,
@@ -107,33 +139,6 @@ def main():
         results = hands.process(image)
         image.flags.writeable = True
 
-                # If no gesture is detected for more than 'sentence_timeout', finalize the sentence
-                if current_time - last_detected_time > sentence_timeout and sentence:
-                    print(f"Final Sentence: {sentence.strip()}")
-                    speak_sentence(sentence.strip())  # Converts the sentence to speech
-                    sentence = ""  # Clear sentence after finalizing
-
-                # Keep updating the last detection time
-                last_detected_time = current_time
-
-        else:
-            # If no gesture is detected, still display the current word and sentence
-            if current_word:
-                sentence += current_word + " "
-            current_word = ""  # Reset the current word if no gesture is detected
-
-        # Always display the current word and sentence, even if no new gestures are detected
-        cv.putText(debug_image, f"Word: {current_word}", (10, 70), cv.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-        cv.putText(debug_image, f"Sentence: {sentence.strip()}", (10, 110), cv.FONT_HERSHEY_SIMPLEX, 0.8,
-                   (255, 255, 255), 2)
-
-        # Show the webcam output with the current word and sentence
-        cv.imshow("ASL Translator using OpenCV ", debug_image)
-
-    cap.release()
-    cv.destroyAllWindows()
-
-
         if results.multi_hand_landmarks is not None:
             for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
                 # Bounding box calculation
@@ -180,6 +185,32 @@ def main():
                 if current_time - last_detected_time > word_timeout and current_word:
                     sentence += current_word + " "
                     current_word = ""
+
+                # If no gesture is detected for more than 'sentence_timeout', finalize the sentence
+                if current_time - last_detected_time > sentence_timeout and sentence:
+                    print(f"Final Sentence: {sentence.strip()}")
+                    speak_sentence(sentence.strip())  # Converts the sentence to speech
+                    sentence = ""  # Clear sentence after finalizing
+
+                # Keep updating the last detection time
+                last_detected_time = current_time
+
+        else:
+            # If no gesture is detected, still display the current word and sentence
+            if current_word:
+                sentence += current_word + " "
+            current_word = ""  # Reset the current word if no gesture is detected
+
+        # Always display the current word and sentence, even if no new gestures are detected
+        cv.putText(debug_image, f"Word: {current_word}", (10, 70), cv.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        cv.putText(debug_image, f"Sentence: {sentence.strip()}", (10, 110), cv.FONT_HERSHEY_SIMPLEX, 0.8,
+                   (255, 255, 255), 2)
+
+        # Show the webcam output with the current word and sentence
+        cv.imshow("ASL Translator using OpenCV ", debug_image)
+
+    cap.release()
+    cv.destroyAllWindows()
 
 
 def select_mode(key, mode):
