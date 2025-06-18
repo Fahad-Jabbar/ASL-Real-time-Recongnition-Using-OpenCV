@@ -12,53 +12,16 @@ import mediapipe as mp
 from utils.cvfpscalc import CvFpsCalc
 from model.keypoint_classifier.keypoint_classifier import KeyPointClassifier
 
-# Variables to track detected gestures and time
-current_word = ""  # Tracks the word being formed
-sentence = ""  # Tracks the complete sentence
-last_detected_time = 0  # Last time a gesture was detected
-word_timeout = 10  # Timeout in seconds to finalize a word
-sentence_timeout = 20  # Timeout in seconds to finalize a sentence
+
 
 datasetdir = "model/dataset/dataset 1"
 #//////////////////////////////////////////////
-# Initialize the TTS engine
-engine = pyttsx3.init()
 
-# Optional: Set the properties for the speech (rate, volume, voice)
-engine.setProperty('rate', 150)  # Speed of the speech
-engine.setProperty('volume', 1)  # Volume level (0.0 to 1.0)
-
-# Function to speak the sentence
-def speak_sentence(sentence):
-    engine.say(sentence)
-    engine.runAndWait()
 #//////////////////////////////////////////////
 
-def get_args():
-    parser = argparse.ArgumentParser()
 
-    parser.add_argument("--device", type=int, default=0)
-    parser.add_argument("--width", help="cap width", type=int, default=960)
-    parser.add_argument("--height", help="cap height", type=int, default=540)
 
-    parser.add_argument("--use_static_image_mode", action="store_true")
-    parser.add_argument(
-        "--min_detection_confidence",
-        help="min_detection_confidence",
-        type=float,
-        default=0.7,
-    )
-    parser.add_argument(
-        "--min_tracking_confidence",
-        help="min_tracking_confidence",
-        type=int,
-        default=0.5,
-    )
-
-    args = parser.parse_args()
-
-    return args
-
+//////def get
 
 def main():
     # Argument parsing #################################################################
@@ -651,4 +614,5 @@ def draw_info(image, fps, mode, number):
     return image
 
 
-
+if __name__ == "__main__":
+    main()
