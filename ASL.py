@@ -651,5 +651,4 @@ def draw_info(image, fps, mode, number):
     return image
 
 
-if __name__ == "__main__":
-    main()
+
