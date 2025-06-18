@@ -58,7 +58,7 @@ def main():
 
     keypoint_classifier = KeyPointClassifier()
 
-    # Read labels ##################################################
+    # Read labels ###########################################################
     with open(
         "model/keypoint_classifier/keypoint_classifier_label.csv", encoding="utf-8-sig"
     ) as f:
@@ -149,7 +149,36 @@ def main():
                         # Reset the timer for the next gesture
                         last_hand_sign_time = current_time
 
-               
+                # If no gesture is detected for more than 'word_timeout', finalize the current word
+                if current_time - last_detected_time > word_timeout and current_word:
+                    sentence += current_word + " "
+                    current_word = ""
+
+                # If no gesture is detected for more than 'sentence_timeout', finalize the sentence
+                if current_time - last_detected_time > sentence_timeout and sentence:
+                    print(f"Final Sentence: {sentence.strip()}")
+                    speak_sentence(sentence.strip())  # Converts the sentence to speech
+                    sentence = ""  # Clear sentence after finalizing
+
+                # Keep updating the last detection time
+                last_detected_time = current_time
+
+        else:
+            # If no gesture is detected, still display the current word and sentence
+            if current_word:
+                sentence += current_word + " "
+            current_word = ""  # Reset the current word if no gesture is detected
+
+        # Always display the current word and sentence, even if no new gestures are detected
+        cv.putText(debug_image, f"Word: {current_word}", (10, 70), cv.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        cv.putText(debug_image, f"Sentence: {sentence.strip()}", (10, 110), cv.FONT_HERSHEY_SIMPLEX, 0.8,
+                   (255, 255, 255), 2)
+
+        # Show the webcam output with the current word and sentence
+        cv.imshow("ASL Translator using OpenCV ", debug_image)
+
+    cap.release()
+    cv.destroyAllWindows()
 
 
 def select_mode(key, mode):
